@@ -1,0 +1,20 @@
+Preparar o Sistema Operacional 
+Referencia: http://derekmolloy.ie/writing-a-linux-kernel-module-part-1-introduction/
+
+$ mkdir KERNEL
+$ cd KERNEL
+
+Considerando o que o professor falou e a documentação em PDF, foi buscado na internet o github referente ao autor do tutorial writing-a-linux-kernel-module .
+$ sudo apt-get install git
+$ git clone https://github.com/derekmolloy/exploringBB.git
+
+$ sudo apt-get update
+
+$ apt-cache search linux-headers-$(uname -r) 
+
+
+$ sudo apt-get install linux-headers-4.15.0-4
+$ cd /usr/src/linux-headers-4.15.0-20/
+
+$ uname -a
+Linux so 4.15.18 #5 SMP Mon Aug 26 00:06:24 -03 2019 x86_64 x86_64 x86_64 GNU/Linux
