@@ -1,0 +1,53 @@
+Testar o módulo EBBCHAR 
+
+Com o que a Jana achou o github do autor do tutorial, refiz os passos dela. Assim, busquei onde havia o código a ser testado, o ebbchar.
+$ cd home/so/Desktop/KERNEL/exploringBB/extras/kernel/ebbchar
+$ make 
+make -C /lib/modules/5.0.0-27-generic/build/ M=/home/chr/KERNEL/200/ebbchar modules
+make[1]: Entering directory '/usr/src/linux-headers-5.0.ccc0-27-generic'
+  CC [M]  /home/chr/KERNEL/200/ebbchar/ebbchar.o
+  Building modules, stage 2.
+  MODPOST 1 modules
+  CC      /home/chr/KERNEL/200/ebbchar/ebbchar.mod.o
+  LD [M]  /home/chr/KERNEL/200/ebbchar/ebbchar.ko
+make[1]: Leaving directory '/usr/src/linux-headers-5.0.0-27-generic'
+cc testebbchar.c -o test
+
+$ sudo insmod ebbchar.ko
+$ ls -l /dev/ebbchar
+crw------- 1 root root 243, 0 set 26 12:52 /dev/ebbchar
+
+
+
+$ ls
+99-ebbchar.rules  ebbchar.ko     ebbchar.mod.o  Makefile       Module.symvers  testebbchar.c
+ebbchar.c         ebbchar.mod.c  ebbchar.o      modules.order  test
+
+sudo ./test
+Starting device test code example...
+Type in a short string to send to the kernel module:
+oiiiii
+Writing message to the device [oiiiii].
+Press ENTER to read back from the device...
+
+Reading from the device...
+The received message is: [oiiiii(6 letters)]
+End of the program
+
+
+
+$ modinfo ebbchar.ko
+filename:       /home/so/Desktop/KERNEL/exploringBB/extras/kernel/ebbchar/ebbchar.ko
+version:        0.1
+description:    A simple Linux char driver for the BBB
+author:         Derek Molloy
+license:        GPL
+srcversion:     4523AD7EA70C29C1A91DDA0
+depends:        
+retpoline:      Y
+name:           ebbchar
+vermagic:       4.15.18 SMP mod_unload
+
+
+
+$ sudo rmmod ebbchar
