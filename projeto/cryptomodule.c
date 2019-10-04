@@ -24,6 +24,7 @@
 #include <linux/kernel.h>         // Contains types, macros, functions for the kernel
 #include <linux/fs.h>             // Header for the Linux file system support
 #include <linux/uaccess.h>        // Required for the copy to user function
+#include <linux/mutex.h>
 #define  DEVICE_NAME "crypto"     ///< The device will appear at /dev/ebbchar using this value
 #define  CLASS_NAME  "ebb"        ///< The device class -- this is a character device driver
 
@@ -43,6 +44,7 @@ static short  size_of_message;              ///< Used to remember the size of th
 static int    numberOpens = 0;              ///< Counts the number of times the device is opened
 static struct class*  ebbcharClass  = NULL; ///< The device-driver class struct pointer
 static struct device* ebbcharDevice = NULL; ///< The device-driver device struct pointer
+static struct mutex crypto_mutex;
 
 // The prototype functions for the character driver -- must come before the struct definition
 static int     dev_open(struct inode *, struct file *);
@@ -97,6 +99,9 @@ static int __init ebbchar_init(void){
       return PTR_ERR(ebbcharDevice);
    }
    printk(KERN_INFO "EBBChar: device class created correctly\n"); // Made it! device was initialized
+   
+   mutex_init(&crypto_mutex);
+   
    return 0;
 }
 
@@ -119,6 +124,9 @@ static void __exit ebbchar_exit(void){
  */
 static int dev_open(struct inode *inodep, struct file *filep){
    numberOpens++;
+
+   mutex_lock(&crypto_mutex);
+
    printk(KERN_INFO "EBBChar: Device has been opened %d time(s)\n", numberOpens);
    return 0;
 }
@@ -168,6 +176,9 @@ static ssize_t dev_write(struct file *filep, const char *buffer, size_t len, lof
  */
 static int dev_release(struct inode *inodep, struct file *filep){
    printk(KERN_INFO "EBBChar: Device successfully closed\n");
+
+   mutex_unlock(&crypto_mutex);
+
    return 0;
 }
 
