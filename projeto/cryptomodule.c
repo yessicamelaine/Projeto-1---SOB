@@ -26,6 +26,7 @@
 #include <linux/fs.h>             // Header for the Linux file system support
 #include <linux/uaccess.h>        // Required for the copy to user function
 #include <linux/mutex.h>
+#include <linux/slab.h>
 #define  DEVICE_NAME "crypto"     ///< The device will appear at /dev/ebbchar using this value
 #define  CLASS_NAME  "ebb"        ///< The device class -- this is a character device driver
 
@@ -47,12 +48,15 @@ static struct class*  ebbcharClass  = NULL; ///< The device-driver class struct 
 static struct device* ebbcharDevice = NULL; ///< The device-driver device struct pointer
 static struct mutex crypto_mutex;
 
-static char *key="0123456789ABCDEF"; 
-static char *iv="0123456789ABCDEF";
+size_t key_size,iv_size,key_bin_size, iv_bin_size;
+static char *key;
+static char *iv;
 module_param(key, charp, 0000);
 MODULE_PARM_DESC(key, "key");
 module_param(iv, charp, 0000);
 MODULE_PARM_DESC(iv, "iv");
+static char *key_bin;
+static char *iv_bin;
 
 // The prototype functions for the character driver -- must come before the struct definition
 static int     dev_open(struct inode *, struct file *);
@@ -79,8 +83,26 @@ static struct file_operations fops =
  *  @return returns 0 if successful
  */
 static int __init ebbchar_init(void){
+
    printk(KERN_INFO "EBBChar: Initializing the EBBChar LKM\n");
    printk(KERN_INFO "EBBChar: key=%s iv=%s\n",key,iv);
+   
+   key_size = strlen( key );
+   iv_size = strlen( iv );
+
+   key_bin_size = key_size / 2  ;
+   iv_bin_size = iv_size / 2 ;
+
+   key_bin=kmalloc(key_bin_size+1,0);
+   iv_bin=kmalloc(iv_bin_size+1,0); 
+
+   hex2bin(key_bin,key,key_bin_size);
+   hex2bin(iv_bin,iv,iv_bin_size);
+
+   key_bin[key_bin_size]='\0';
+   iv_bin[iv_bin_size]='\0';
+
+   printk(KERN_INFO "EBBChar: key=%s iv=%s\n",key_bin,iv_bin);
 
    // Try to dynamically allocate a major number for the device -- more difficult but worth it
    majorNumber = register_chrdev(0, DEVICE_NAME, &fops);
@@ -119,6 +141,9 @@ static int __init ebbchar_init(void){
  *  code is used for a built-in driver (not a LKM) that this function is not required.
  */
 static void __exit ebbchar_exit(void){
+   kfree(key_bin);
+   kfree(iv_bin);
+
    device_destroy(ebbcharClass, MKDEV(majorNumber, 0));     // remove the device
    class_unregister(ebbcharClass);                          // unregister the device class
    class_destroy(ebbcharClass);                             // remove the device class
