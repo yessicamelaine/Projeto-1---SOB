@@ -20,6 +20,7 @@
 
 #include <linux/init.h>           // Macros used to mark up functions e.g. __init __exit
 #include <linux/module.h>         // Core header for loading LKMs into the kernel
+#include <linux/moduleparam.h>
 #include <linux/device.h>         // Header to support the kernel Driver Model
 #include <linux/kernel.h>         // Contains types, macros, functions for the kernel
 #include <linux/fs.h>             // Header for the Linux file system support
@@ -45,6 +46,13 @@ static int    numberOpens = 0;              ///< Counts the number of times the 
 static struct class*  ebbcharClass  = NULL; ///< The device-driver class struct pointer
 static struct device* ebbcharDevice = NULL; ///< The device-driver device struct pointer
 static struct mutex crypto_mutex;
+
+static char *key="0123456789ABCDEF"; 
+static char *iv="0123456789ABCDEF";
+module_param(key, charp, 0000);
+MODULE_PARM_DESC(key, "key");
+module_param(iv, charp, 0000);
+MODULE_PARM_DESC(iv, "iv");
 
 // The prototype functions for the character driver -- must come before the struct definition
 static int     dev_open(struct inode *, struct file *);
@@ -72,6 +80,7 @@ static struct file_operations fops =
  */
 static int __init ebbchar_init(void){
    printk(KERN_INFO "EBBChar: Initializing the EBBChar LKM\n");
+   printk(KERN_INFO "EBBChar: key=%s iv=%s\n",key,iv);
 
    // Try to dynamically allocate a major number for the device -- more difficult but worth it
    majorNumber = register_chrdev(0, DEVICE_NAME, &fops);
