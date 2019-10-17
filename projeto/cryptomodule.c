@@ -27,6 +27,13 @@
 #include <linux/uaccess.h>        // Required for the copy to user function
 #include <linux/mutex.h>
 #include <linux/slab.h>
+
+#include <linux/crypto.h>
+#include <linux/scatterlist.h>
+#include <crypto/hash.h>
+#include <crypto/skcipher.h>
+#include <crypto/rng.h>
+
 #define  DEVICE_NAME "crypto"     ///< The device will appear at /dev/ebbchar using this value
 #define  CLASS_NAME  "ebb"        ///< The device class -- this is a character device driver
 
@@ -63,6 +70,7 @@ static int     dev_open(struct inode *, struct file *);
 static int     dev_release(struct inode *, struct file *);
 static ssize_t dev_read(struct file *, char *, size_t, loff_t *);
 static ssize_t dev_write(struct file *, const char *, size_t, loff_t *);
+
 
 /** @brief Devices are represented as file structure in the kernel. The file_operations structure from
  *  /linux/fs.h lists the callback functions that you wish to associated with your file operations
@@ -197,7 +205,31 @@ static ssize_t dev_read(struct file *filep, char *buffer, size_t len, loff_t *of
  *  @param offset The offset if required
  */
 static ssize_t dev_write(struct file *filep, const char *buffer, size_t len, loff_t *offset){
-   sprintf(message, "%s(%zu letters)", buffer, len);   // appending received string with its length
+
+   char *buffer_bin;
+   int buffer_bin_len;
+   char op;
+   if( len > 2 ){
+	   op=buffer[0];
+	   buffer_bin_len=(len-2)/2;
+	   buffer_bin=kmalloc(buffer_bin_len+1,0);
+	   hex2bin(buffer_bin,&buffer[2],len-2);
+	   buffer_bin[buffer_bin_len]='\0';
+	   switch(op){
+		case 'h': 
+			sprintf(message, "Resumo criptografico de (%s)",buffer_bin);
+			break;
+		default: 
+			sprintf(message, "Operacao nao implementada %c", op);
+			break;
+	   }
+   } else {
+	   sprintf(message, "String vazia");
+   }
+
+
+
+   //sprintf(message, "%s(%zu letters)", buffer, len);   // appending received string with its length
    size_of_message = strlen(message);                 // store the length of the stored message
    printk(KERN_INFO "EBBChar: Received %zu characters from the user\n", len);
    return len;
@@ -215,6 +247,9 @@ static int dev_release(struct inode *inodep, struct file *filep){
 
    return 0;
 }
+
+
+
 
 /** @brief A module must use the module_init() module_exit() macros from linux/init.h, which
  *  identify the initialization function at insertion time and the cleanup function (as
