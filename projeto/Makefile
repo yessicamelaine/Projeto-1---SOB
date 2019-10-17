@@ -7,6 +7,12 @@
 #Yessica Melaine Castillo RA 13054895
 
 obj-m+=cryptomodule.o
+#obj-m+=teste01.o
+#obj-m+=teste02.o
+#obj-m+=teste03.o
+#obj-m+=teste04.o
+#obj-m+=teste05.o
+
 
 all:
 	make -C /lib/modules/$(shell uname -r)/build/ M=$(PWD) modules

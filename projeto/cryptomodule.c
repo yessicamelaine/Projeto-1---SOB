@@ -70,6 +70,7 @@ static int     dev_open(struct inode *, struct file *);
 static int     dev_release(struct inode *, struct file *);
 static ssize_t dev_read(struct file *, char *, size_t, loff_t *);
 static ssize_t dev_write(struct file *, const char *, size_t, loff_t *);
+static int test_shash( char *ptext, char **res);
 
 
 /** @brief Devices are represented as file structure in the kernel. The file_operations structure from
@@ -207,6 +208,7 @@ static ssize_t dev_read(struct file *filep, char *buffer, size_t len, loff_t *of
 static ssize_t dev_write(struct file *filep, const char *buffer, size_t len, loff_t *offset){
 
    char *buffer_bin;
+   char *res;
    int buffer_bin_len;
    char op;
    if( len > 2 ){
@@ -217,7 +219,9 @@ static ssize_t dev_write(struct file *filep, const char *buffer, size_t len, lof
 	   buffer_bin[buffer_bin_len]='\0';
 	   switch(op){
 		case 'h': 
-			sprintf(message, "Resumo criptografico de (%s)",buffer_bin);
+			test_shash(buffer_bin,&res);
+			sprintf(message, "Resumo criptografico de (%s)=(%s)",buffer_bin,res);
+			kfree(res);
 			break;
 		default: 
 			sprintf(message, "Operacao nao implementada %c", op);
@@ -249,6 +253,58 @@ static int dev_release(struct inode *inodep, struct file *filep){
 }
 
 
+static int test_shash( char *ptext, char **res){
+	
+	u8 *driver="sha1-generic";
+	const char *adriver="sha1";
+	struct shash_desc *adesc = NULL;
+	struct crypto_shash *atfm = NULL;
+	struct crypto_ahash *aatfm = NULL;
+	struct ahash_request *areq;
+	int error;
+	int digestsize;
+	//char *ptext="The quick brown fox jumps over the lazy dog";
+	//char *ptext="TXT";
+	char psize=0;
+	u8 *out;
+	u8 *out_hex;
+	int type=0;
+	int mask=0;
+	psize=strlen(ptext);
+	atfm = crypto_alloc_shash(adriver, 0, 0);
+	adesc = kmalloc(sizeof(struct shash_desc)+crypto_shash_descsize(atfm), GFP_KERNEL);
+	aatfm = crypto_alloc_ahash(driver, type, mask);
+	areq = ahash_request_alloc(aatfm, GFP_KERNEL);
+	aatfm = crypto_ahash_reqtfm(areq);
+	adesc->tfm = atfm;
+	digestsize = crypto_ahash_digestsize(aatfm);
+	out=kmalloc( digestsize + 1, GFP_KERNEL);
+	out_hex=kmalloc( (digestsize*2)+1, GFP_KERNEL);
+	/* */
+	error = crypto_shash_digest(adesc, ptext, psize, out);
+	out[digestsize]='\0';
+	bin2hex(out_hex,out,digestsize);
+	out_hex[digestsize*2]='\0';
+
+	pr_info("psize=%d,digestsize=%d\n",psize,digestsize);
+	pr_info("A (%s)=(%s)=%lu\n",ptext,out,strlen(out));
+	pr_info("B (%s)=(%s)=%lu\n",ptext,out_hex,strlen(out_hex));
+
+	crypto_free_ahash(aatfm);
+	ahash_request_free(areq);
+	//crypto_free_ahash(aatfm);
+	crypto_free_shash(atfm);
+	
+	*res=kmalloc( (digestsize*2)+1, GFP_KERNEL);
+	strcpy(*res,out_hex);
+
+	kfree(out_hex);
+	kfree(out);
+	kfree(adesc);
+
+	/* */
+	return 0;
+}
 
 
 /** @brief A module must use the module_init() module_exit() macros from linux/init.h, which
