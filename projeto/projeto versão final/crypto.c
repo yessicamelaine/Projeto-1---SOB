@@ -23,8 +23,8 @@
 #include<string.h>
 #include<unistd.h>
 
-#define BUFFER_LENGTH 256               ///< The buffer length (crude but fine)
-static char receive[BUFFER_LENGTH];     ///< The receive buffer from the LKM
+#define BUFFER_LENGTH 256               // O comprimento do buffer 
+static char receive[BUFFER_LENGTH];     // O buffer de recebimento do modulo
 
 int main(int argc, char *argv[]){
    int ret, fd;
@@ -37,31 +37,29 @@ int main(int argc, char *argv[]){
 	   return -1;
 
    }
-   printf("Starting device test code example...\n");
-   fd = open("/dev/crypto", O_RDWR);             // Open the device with read/write access
+   printf("Iniciando o exemplo de codigo de teste do dispositivo...\n");
+   fd = open("/dev/crypto", O_RDWR); 
+   //Abra o dispositivo com acesso de leitura / gravação
    if (fd < 0){
-      perror("Failed to open the device...");
+      perror("Falha ao abrir o dispositivo...");
       return errno;
    }
-   printf("Type in a short string to send to the kernel module:\n");
-   //scanf("%[^\n]%*c", stringToSend);                // Read in a string (with spaces)
-   printf("Writing message to the device [%s].\n", argv[1]);
-   ret = write(fd, argv[1], strlen(argv[1])); // Send the string to the LKM
+   printf("Digite uma sequencia curta para enviar ao modulo do kernel:\n");
+   //scanf("%[^\n]%*c", stringToSend); // Read in a string (with spaces)
+   printf("Gravando mensagem no dispositivo [%s].\n", argv[1]);
+   ret = write(fd, argv[1], strlen(argv[1])); // Envie a string para o modulo
    if (ret < 0){
-      perror("Failed to write the message to the device.");
+      perror("Falha ao gravar a mensagem no dispositivo.");
       return errno;
    }
 
-   printf("Press ENTER to read back from the device...\n");
-   getchar();
-
-   printf("Reading from the device...\n");
-   ret = read(fd, receive, BUFFER_LENGTH);        // Read the response from the LKM
+   printf("Lendo do dispositivo...\n");
+   ret = read(fd, receive, BUFFER_LENGTH);  // Le a resposta do modulo
    if (ret < 0){
-      perror("Failed to read the message from the device.");
+      perror("Falha ao ler a mensagem do dispositivo.");
       return errno;
    }
-   printf("The received message is: [%s]\n", receive);
-   printf("End of the program\n");
+   printf("A mensagem recebida eh: [%s]\n", receive);
+   printf("Fim do programa\n");
    return 0;
 }
