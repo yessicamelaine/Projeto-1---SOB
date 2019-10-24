@@ -34,6 +34,7 @@
 #include <crypto/skcipher.h>
 #include <crypto/rng.h>
 
+
 #define  DEVICE_NAME "crypto"     ///< The device will appear at /dev/ebbchar using this value
 #define  CLASS_NAME  "ebb"        ///< The device class -- this is a character device driver
 
@@ -71,6 +72,7 @@ static int     dev_release(struct inode *, struct file *);
 static ssize_t dev_read(struct file *, char *, size_t, loff_t *);
 static ssize_t dev_write(struct file *, const char *, size_t, loff_t *);
 static int test_shash( char *ptext, char **res);
+static int test_skcipher(char op, char *intext,int len, char **res); 
 
 
 /** @brief Devices are represented as file structure in the kernel. The file_operations structure from
@@ -215,12 +217,20 @@ static ssize_t dev_write(struct file *filep, const char *buffer, size_t len, lof
 	   op=buffer[0];
 	   buffer_bin_len=(len-2)/2;
 	   buffer_bin=kmalloc(buffer_bin_len+1,0);
+	   buffer_bin[0]='\0';
 	   hex2bin(buffer_bin,&buffer[2],len-2);
 	   buffer_bin[buffer_bin_len]='\0';
+	   pr_info("EBBChar: (%s)(%s)\n",buffer,buffer_bin);
 	   switch(op){
 		case 'h': 
 			test_shash(buffer_bin,&res);
 			sprintf(message, "Resumo criptografico de (%s)=(%s)",buffer_bin,res);
+			kfree(res);
+			break;
+		case 'c': 
+		case 'd': 
+			test_skcipher(op, buffer_bin,buffer_bin_len, &res); 
+			sprintf(message, "Res (%s)=(%s)",buffer_bin,res);
 			kfree(res);
 			break;
 		default: 
@@ -304,6 +314,101 @@ static int test_shash( char *ptext, char **res){
 
 	/* */
 	return 0;
+}
+
+
+
+static int test_skcipher(char op, char *intext,int intext_size, char **res) 
+{
+
+	struct crypto_skcipher *skcipher=NULL;
+	struct skcipher_request *req=NULL;
+	struct crypto_skcipher *tfm;
+	struct scatterlist src, dst;
+	//unsigned int maxdatasize=32;
+	unsigned int maxkeysize;
+	unsigned int ivsize;
+	int ret = -EFAULT;
+	char key[]="1234567890123456";
+	int key_size=16;
+	char iv[] ="1234567890123456";
+	int iv_size=16;
+	//char ptext[17]="1234567890123456";
+	char ptext[17]="";
+	int ptext_size=16;
+
+	char ctext[17]="";
+	int ctext_size=16;
+	char ttext[17]="";
+	//int ttext_size=16;
+	//char hex[33]="d8b59848c7670c94b29b54d2379e2e7a";
+	//char hex[33]="d79b53fb2d1bfa526ad8720a523b2fbe";
+	//char hex[33]="9aba660ac568b29f3259df662047f4e6";
+	char hex[33]="";
+	//hex2bin(ptext,hex,16);
+
+	DECLARE_CRYPTO_WAIT(wait);
+
+	strcpy(ptext,intext);
+	ptext[strlen(intext)]='\0';
+
+	strcpy(key,key_bin);
+	key[strlen(key_bin)]='\0';
+
+	strcpy(iv,iv_bin);
+	iv[strlen(iv_bin)]='\0';
+	
+
+	pr_info("ptext=(%s)%ld\n",ptext,strlen(ptext));
+
+	skcipher  = crypto_alloc_skcipher("cbc(aes)", 0, 0);
+	if (IS_ERR(skcipher)) {
+		pr_info("could not allocate skcipher handle\n");
+		return PTR_ERR(skcipher);
+	}
+
+	req  = skcipher_request_alloc(skcipher , GFP_KERNEL);
+	if (!req) {
+		pr_info("could not allocate skcipher request\n");
+		ret = -ENOMEM;
+		//goto out;
+	}
+	tfm  = crypto_skcipher_reqtfm(req );
+	maxkeysize = tfm->keysize;
+	ivsize = crypto_skcipher_ivsize(tfm);
+	ret = crypto_skcipher_setkey(tfm , key, key_size);
+	//goto out;
+	sg_init_one(&src, ptext, ptext_size);	
+	sg_init_one(&dst, ctext, ctext_size);	
+
+	skcipher_request_set_callback(req, 0, crypto_req_done, &wait);
+	skcipher_request_set_crypt(req, &src, &dst, iv_size, iv);
+	if( op == 'c' ){
+		crypto_wait_req(crypto_skcipher_encrypt(req), &wait);
+	} else {
+		crypto_wait_req(crypto_skcipher_decrypt(req), &wait);
+	}
+
+	bin2hex(hex,ctext,16);
+   	*res=kmalloc(33,0);
+	bin2hex(*res,ctext,16);
+	*res[33]='\0';
+
+	pr_info("-----------------\n");
+	pr_info("1(%s)\n",ptext);
+	pr_info("2(%s)%ld\n",ctext,strlen(ctext));
+	pr_info("3(%s)%ld\n",ttext,strlen(ttext));
+	pr_info("hex=(%s)%ld\n",hex,strlen(hex));
+
+	pr_info("-----------------\n");
+	pr_info("teste04(%s)%ld\n",ctext,strlen(ctext));
+	pr_info("-----------------\n");
+
+	skcipher_request_free(req);
+	crypto_free_skcipher(skcipher);
+
+	return 0;
+
 }
 
 
